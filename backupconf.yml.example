@@ -1,0 +1,20 @@
+prism_host: 192.168.1.100
+nutanix_cvm_addr: 192.168.1.200
+nutanix_mount_root: /mnt/nutanix
+backup_root: /backup/nutanix
+
+vms:
+  - name: prod-db
+    disks:
+      - scsi.0
+      - scsi.1
+
+  - name: win10
+    disks:
+      - ide.0
+      - ide.1
+      - scsi.0
+
+  - name: ubuntu16-prim
+    disks:
+      - scsi.0

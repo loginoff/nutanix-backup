@@ -138,6 +138,9 @@ func setupLogging() {
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp: true,
+	})
 
 	logfile := "nutanix_backup.log"
 	f, err := os.OpenFile(logfile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0640)
@@ -288,8 +291,8 @@ func runCMD(cmd string, args ...string) (err error) {
 }
 
 func main() {
-	evaluateConfig()
 	setupLogging()
+	evaluateConfig()
 
 	ntnx, err := nutanixapi.NewClient(BackupConfig.Prism_host, *username, *password, false)
 	if err != nil {

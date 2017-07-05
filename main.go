@@ -22,6 +22,7 @@ var (
 	username   *string
 	password   *string
 	configfile *string
+	bwlimit    *string
 	debug      *bool
 	help       *bool
 	mounter    *NutanixMounter
@@ -32,6 +33,7 @@ var BackupConfig struct {
 	Backup_root        string
 	Nutanix_mount_root string
 	Nutanix_cvm_addr   string
+	BWLimit            string
 
 	VMs []VMBackup
 }
@@ -75,13 +77,12 @@ func init() {
 	username = flag.String("username", "", "Nutanix PRISM username")
 	password = flag.String("password", "", "Nutanix PRISM password")
 	configfile = flag.String("config", defaultconfig, "Configuration file for the entire backup process")
+	bwlimit = flag.String("bwlimit", "", "Limit the bandwidth of image copying eg 15M, 300K")
 	debug = flag.Bool("debug", false, "Turn on debug logging")
 	help = flag.Bool("help", false, "Display help")
 }
 
 func evaluateConfig() {
-	flag.Parse()
-
 	if *help {
 		flag.Usage()
 		os.Exit(1)
@@ -105,6 +106,10 @@ func evaluateConfig() {
 	err := configor.Load(&BackupConfig, *configfile)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if *bwlimit != "" {
+		BackupConfig.BWLimit = *bwlimit
 	}
 
 	if BackupConfig.Prism_host == "" {
@@ -264,7 +269,7 @@ func WriteSnapshotInfo(spec *nutanixapi.AHVSnapshotInfo, path string) error {
 	return e.Encode(spec)
 }
 
-func BackupVDisk(container_UUID, disk_container_path, vm_root, disk_name string) error {
+func BackupVDisk(container_UUID, disk_container_path, vm_root, disk_name string) (err error) {
 	container_root, err := mounter.GetContainerMountPathByUUID(container_UUID)
 	if err != nil {
 		return err
@@ -272,7 +277,13 @@ func BackupVDisk(container_UUID, disk_container_path, vm_root, disk_name string)
 	vdisk_path := filepath.Join(container_root, disk_container_path)
 	backup_path := filepath.Join(vm_root, disk_name)
 	log.Infof("Backing up %s to %s", vdisk_path, backup_path)
-	return runCMD("rsync", "-P", "--sparse", vdisk_path, backup_path)
+	if BackupConfig.BWLimit != "" {
+		log.Infof("Bandwidth limited to %s", BackupConfig.BWLimit)
+		err = runCMD("rsync", "-P", "--sparse", "--bwlimit", BackupConfig.BWLimit, vdisk_path, backup_path)
+	} else {
+		err = runCMD("rsync", "-P", "--sparse", vdisk_path, backup_path)
+	}
+	return
 }
 
 func getSnapshotName(vmname string) string {
@@ -291,6 +302,7 @@ func runCMD(cmd string, args ...string) (err error) {
 }
 
 func main() {
+	flag.Parse()
 	setupLogging()
 	evaluateConfig()
 

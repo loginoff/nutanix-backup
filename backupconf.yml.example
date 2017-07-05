@@ -3,6 +3,10 @@ nutanix_cvm_addr: 192.168.1.200
 nutanix_mount_root: /mnt/nutanix
 backup_root: /backup/nutanix
 
+#Limit the bandwidth of VM image copying
+#Useful if you want to have minimal impact on production systems
+bwlimit: 32M
+
 vms:
   - name: prod-db
     disks:
